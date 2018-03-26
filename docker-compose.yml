@@ -1,0 +1,49 @@
+version: '3'
+volumes:
+  postgres_data:
+    driver: local
+  sentry_status:
+    driver: local
+  sentry_files:
+    driver: local
+
+services:
+  redis:
+    image: redis
+    restart: on-failure
+
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=sentry
+    restart: on-failure
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  sentry:
+    build: .
+    image: jdipierro/sentry-compose
+    env_file:
+      - sentry.env.secret
+    restart: on-failure
+    volumes:
+      - .:/startup
+      - sentry_status:/container_status
+      - sentry_files:/var/lib/sentry/files 
+    ports:
+      - "9090:9000"
+
+  sentry-cron:
+    image: jdipierro/sentry-compose
+    restart: on-failure
+    env_file:
+      - sentry.env.secret
+    command: /startup/run.sh cron
+
+  sentry-worker:
+    image: jdipierro/sentry-compose
+    restart: on-failure
+    env_file:
+      - sentry.env.secret
+    command: /startup/run.sh worker
